@@ -1,0 +1,61 @@
+drupal views 限制汉字输出长度
+需要修改views.module模块：
+一、增加一个函数
+//截取中文字符串
+function gbsubstr($gbk, $start, $len) {
+    $tmpstr = "";
+    $strlen = $start + $len;
+    for($i = 0; $i < $strlen; $i++) {
+        if(ord(substr($gbk, $i, 1)) > 0xa0) {
+            $tmpstr .= substr($gbk, $i, 2);
+            $i++;
+        } else
+            $tmpstr .= substr($gbk, $i, 1);
+    }
+    return $tmpstr;
+};
+二、修改views_trim_text函数：
+function views_trim_text($alter, $value) {
+  $gbk=mb_convert_encoding($value, "GBK", "UTF-8");//增加的
+  //dsm(strlen($gbk));
+  //dsm($value);
+  if (strlen($gbk) > $alter['max_length']) {  //将drupal_strlen修改为 strlen
+    //$value = drupal_substr($value, 0, $alter['max_length']);
+    $u8 = gbsubstr($gbk, 0, $alter['max_length']);//可处理汉字,代替上一行
+    $value=mb_convert_encoding($u8, "UTF-8", "GBK"); //增加的   
+    //dsm($value);
+    // TODO: replace this with cleanstring of ctools
+    if (!empty($alter['word_boundary'])) {
+      $regex = "(.*)\b.+";
+      if (function_exists('mb_ereg')) {
+        mb_regex_encoding('UTF-8');
+        $found = mb_ereg($regex, $value, $matches);
+      }
+      else {
+        $found = preg_match("/$regex/us", $value, $matches);
+      }
+      if ($found) {
+        $value = $matches[1];
+      }
+    }
+    // Remove scraps of HTML entities from the end of a strings
+    $value = rtrim(preg_replace('/(?:<(?!.+>)|&(?!.+;)).*$/us', '', $value));
+
+    if (!empty($alter['ellipsis'])) {
+      $value .= '...';
+    }
+  }
+  if (!empty($alter['html'])) {
+    $value = _filter_htmlcorrector($value);
+  }
+
+  return $value;
+}
+
+三、增加链接的title提示
+        一般截断标题后需要增加链接的title提示，以表达未截断前的完整含义。
+修改views_handler_field.inc  文件：
+在function render_as_link函数中返回前增加一行：
+     if (isset($tokens['[title]']))
+        $options['attributes']['title'] = $tokens['[title]'];//added by zc
+搞定。
