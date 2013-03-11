@@ -1,0 +1,9 @@
+修正drupal newsflash 弹出菜单在IE6上无响应
+因ie6不支持css弹出菜单，故newsflash模板上的弹出菜单只能用javascript模拟，但不知何故必须在html.tpl.php中重新加载才有效。以下为加载代码：
+<!--[if lte IE 6]>
+
+        <script type="text/javascript" src="/<?php print drupal_get_path('theme','newsflash')?>/js/suckerfish.js"></script>
+
+      <![endif]-->
+
+</head>
